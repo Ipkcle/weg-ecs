@@ -154,7 +154,7 @@ impl<T: Component> Registry<T> {
         EntityStream::new(self)
     }
 
-    pub fn new<NEW_TYPE: Component>() -> Registry<NEW_TYPE> {
+    pub fn new() -> Registry<T> {
         Registry {
             components: Vec::new(),
             entity_indicies: Vec::new(),
