@@ -1,9 +1,9 @@
 use ::Registry;
-use ::Component;
+use ::ExampleComponent;
 
 #[test]
 fn add_remove_crash_test() {
-    let mut registry = Registry::new();
+    let mut registry = Registry::new<ExampleComponent>();
     registry.make_entity(vec![Component::Count(0), Component::Name(String::from("first"))]);
     registry.make_entity(vec![Component::Count(0), Component::Name(String::from("second"))]);
     registry.make_entity(vec![Component::Name(String::from("third"))]);
@@ -16,7 +16,7 @@ fn add_remove_crash_test() {
 
 #[test]
 fn add_remove_entities() {
-    let mut registry = Registry::new();
+    let mut registry = Registry::new<ExampleComponent>();
     assert_eq!(registry.get_num_entities(), 0);
     assert_eq!(registry.get_num_components(), 0);
 

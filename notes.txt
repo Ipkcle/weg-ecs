@@ -1,0 +1,13 @@
+NECESSARY for core functionality:
+
+  way to link entities. think smart and dont be afraid to hack something
+together for minimum viable product. After MVP, think hard about how memory is
+layed out to make some elegant thing.
+
+EVENTUALLY after core functionality is complete and you feel like it:
+
+  figure out where to use inline to improve performance and check other common
+optimizations.
+
+  create more sophisticated memory shit to reduce reallocation, such as leaving
+some empty memory after each entity to leave room for adding more components

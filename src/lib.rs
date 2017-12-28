@@ -5,23 +5,36 @@ use std::error::Error;
 mod tests;
 
 //TODO understand what type i just used here
-type Entity = [Component];
 type EntityIndex = usize;
 
-enum Component {
+enum ExampleComponent {
     Count(i32),
     Name(String),
 }
 
-struct EntityStream<'registry> {
-    count: EntityIndex,
-    num_entities: EntityIndex,
-    registry: &'registry mut Registry,
+impl Component for ExampleComponent {
+    fn get_mask(&self) -> ComponentMask {
+        match self {
+            &ExampleComponent::Count(..) => 1 << 0,
+            &ExampleComponent::Name(..) => 1 << 1,
+        }
+    }
 }
 
-//streaming iterator for entities in registry
-impl<'registry> EntityStream<'registry> {
-    pub fn new(registry: &mut Registry) -> EntityStream {
+type ComponentMask = u32;
+trait Component {
+    fn get_mask(&self) -> ComponentMask;
+}
+
+struct EntityStream<'registry, T: 'registry + Component> {
+    count: EntityIndex,
+    num_entities: EntityIndex,
+    registry: &'registry mut Registry<T>,
+}
+
+///Streaming iterator for entities in registry
+impl<'registry, T: Component> EntityStream<'registry, T> {
+    pub fn new(registry: &mut Registry<T>) -> EntityStream<T> {
         EntityStream {
             count: 0,
             num_entities: registry.get_num_entities(),
@@ -29,7 +42,7 @@ impl<'registry> EntityStream<'registry> {
         }
     }
 
-    pub fn next(&mut self) -> Option<&mut Entity> {
+    pub fn next(&mut self) -> Option<&mut [T]> {
         self.count += 1;
 
         if self.count < self.num_entities {
@@ -57,13 +70,13 @@ impl Error for EntityError {
     }
 }
 
-struct Registry {
-    components: Vec<Component>,
+struct Registry<T: Component> {
+    components: Vec<T>,
     entity_indicies: Vec<usize>,
 }
 
-impl Registry {
-    pub fn make_entity(&mut self, components_to_add: Vec<Component>) {
+impl<T: Component> Registry<T> {
+    pub fn make_entity(&mut self, components_to_add: Vec<T>) {
         //Add the new entity index
         self.entity_indicies.push(self.components.len());
 
@@ -114,12 +127,12 @@ impl Registry {
         }
     }
 
-    pub fn get_entity(&mut self, entity_index: EntityIndex) -> &mut Entity {
+    pub fn get_entity(&mut self, entity_index: EntityIndex) -> &mut [T] {
         //crash if EntityError
         self.try_get_entity(entity_index).unwrap()
     }
 
-    pub fn try_get_entity(&mut self, entity_index: EntityIndex) -> Result<&mut Entity, EntityError> {
+    pub fn try_get_entity(&mut self, entity_index: EntityIndex) -> Result<&mut [T], EntityError> {
         if self.entity_indicies.len() <= entity_index {
             Err(EntityError{ index: entity_index })
         } else { 
@@ -137,11 +150,11 @@ impl Registry {
         self.components.len()
     }
 
-    pub fn get_entity_stream<'registry>(&'registry mut self) -> EntityStream<'registry> {
+    pub fn get_entity_stream<'registry>(&'registry mut self) -> EntityStream<'registry, T> {
         EntityStream::new(self)
     }
 
-    pub fn new() -> Registry {
+    pub fn new<NEW_TYPE: Component>() -> Registry<NEW_TYPE> {
         Registry {
             components: Vec::new(),
             entity_indicies: Vec::new(),
@@ -149,14 +162,16 @@ impl Registry {
     }
 }
 
-fn render_system(registry: &mut Registry) {
-    let mut entity_stream = registry.get_entity_stream();
-    loop {
-        match entity_stream.next() {
-            Some(entity) => {
-                //pass
-            },
-            None => break,
+trait System<T: Component> {
+    fn run(&mut self, registry: &mut Registry<T>) {
+        let mut entity_stream = registry.get_entity_stream();
+        loop {
+            match entity_stream.next() {
+                Some(entity) => {
+                    // maybe call a closure here to capture the environment
+                },
+                None => break,
+            }
         }
     }
 }
