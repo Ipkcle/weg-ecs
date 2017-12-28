@@ -2,17 +2,7 @@ use std::fmt;
 use std::error::Error;
 
 #[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-        assert_eq!(2 + 2, 4);
-    }
-
-    #[test]
-    fn add_remove_entities() {
-
-    }
-}
+mod tests;
 
 //TODO understand what type i just used here
 type Entity = [Component];
@@ -43,7 +33,7 @@ impl<'registry> EntityStream<'registry> {
         self.count += 1;
 
         if self.count < self.num_entities {
-            Some(self.registry.get_entity(self.count).unwrap())
+            Some(self.registry.try_get_entity(self.count).unwrap())
         } else {
             None
         }
@@ -84,7 +74,7 @@ impl Registry {
     }
     
     fn get_entity_end(&self, entity_index: EntityIndex) -> usize {
-        if self.entity_indicies.len() - 1 > entity_index {
+        if self.entity_indicies.len() > entity_index + 1 {
             self.entity_indicies[entity_index+1]
         } else {
             self.components.len()
@@ -97,14 +87,26 @@ impl Registry {
     }
 
     pub fn try_remove_entity(&mut self, entity_index: EntityIndex) -> Result<(), EntityError> {
-        //If the entity in question does not exist, fail. TODO error handling
+        //If the entity in question does not exist, raise an EntityError.
         if self.entity_indicies.len() <= entity_index {
             Err(EntityError{ index: entity_index })
         } else {
-            //Remove each component of the entity
+            //Find first and last index of entity in the component array
             let entity_end = self.get_entity_end(entity_index);
+            println!("entity {} ends here:{}", entity_index, entity_end);
             let entity_begin = self.entity_indicies[entity_index];
+
+            //Remove each component of the entity
             self.components.drain(entity_begin..entity_end);
+
+            //If the removed entity is not the most recent entity, 
+            //update the entity beginnings of all more recent entities.
+            if self.entity_indicies.len() > entity_index + 1 {
+                let num_components_removed = entity_end - entity_begin;
+                for entity_begin_index in &mut self.entity_indicies[entity_index + 1..] {
+                    *entity_begin_index -= num_components_removed;
+                }
+            }
 
             //Remove the entity index
             self.entity_indicies.remove(entity_index);
@@ -112,7 +114,12 @@ impl Registry {
         }
     }
 
-    pub fn get_entity(&mut self, entity_index: EntityIndex) -> Result<&mut Entity, EntityError> {
+    pub fn get_entity(&mut self, entity_index: EntityIndex) -> &mut Entity {
+        //crash if EntityError
+        self.try_get_entity(entity_index).unwrap()
+    }
+
+    pub fn try_get_entity(&mut self, entity_index: EntityIndex) -> Result<&mut Entity, EntityError> {
         if self.entity_indicies.len() <= entity_index {
             Err(EntityError{ index: entity_index })
         } else { 
@@ -126,8 +133,19 @@ impl Registry {
         self.entity_indicies.len()
     }
 
+    pub fn get_num_components(&self) -> usize {
+        self.components.len()
+    }
+
     pub fn get_entity_stream<'registry>(&'registry mut self) -> EntityStream<'registry> {
         EntityStream::new(self)
+    }
+
+    pub fn new() -> Registry {
+        Registry {
+            components: Vec::new(),
+            entity_indicies: Vec::new(),
+        }
     }
 }
 
