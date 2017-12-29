@@ -1,5 +1,39 @@
 use component::{ Component, ComponentMask };
 use registry::Registry;
+use ::System;
+
+struct ExampleRenderSystem;
+
+impl ExampleRenderSystem {
+    fn run_on_entity(entity: &[ExampleComponent]) {
+        let mut n: Option<&String> = None;
+        for component in entity {
+            match *component {
+                ExampleComponent::Name(ref name) => { n = Some(name) },
+                _ => (),
+            }
+        }
+        match n {
+            Some(name) => println!("name of this entity is: {}", name),
+            None => println!("this entity has no name"),
+        }
+
+    }
+
+}
+
+impl System<ExampleComponent> for ExampleRenderSystem {
+    fn mask() -> ComponentMask {
+        0 
+    }
+
+    fn run(&mut self, registry: &mut Registry<ExampleComponent>) {
+        let mut entity_stream = registry.get_entity_stream();
+        For!(entity in entity_stream => {
+            ExampleRenderSystem::run_on_entity(entity);
+        })
+    }
+}
 
 enum ExampleComponent {
     Count(i32),
@@ -13,6 +47,20 @@ impl Component for ExampleComponent {
             &ExampleComponent::Name(..) => 1 << 1,
         }
     }
+}
+
+#[test]
+fn system_crash_test() {
+    let mut registry: Registry<ExampleComponent> = Registry::new();
+    registry.make_entity(vec![ExampleComponent::Count(0), ExampleComponent::Name(String::from("first"))]);
+    registry.make_entity(vec![ExampleComponent::Count(0), ExampleComponent::Name(String::from("second"))]);
+    registry.make_entity(vec![ExampleComponent::Name(String::from("third"))]);
+    registry.make_entity(vec![ExampleComponent::Count(0), ExampleComponent::Name(String::from("fourth"))]);
+    registry.make_entity(vec![ExampleComponent::Count(0)]);
+    
+    let mut system = ExampleRenderSystem{};
+
+    system.run(&mut registry);
 }
 
 #[test]

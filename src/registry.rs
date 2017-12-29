@@ -16,15 +16,14 @@ impl<'registry, T: Component> EntityStream<'registry, T> {
         EntityStream {
             count: 0,
             num_entities: registry.get_num_entities(),
-            registry: registry,
+            registry,
         }
     }
 
     pub fn next(&mut self) -> Option<&mut [T]> {
         self.count += 1;
-
-        if self.count < self.num_entities {
-            Some(self.registry.try_get_entity(self.count).unwrap())
+        if self.count <= self.num_entities {
+            Some(self.registry.try_get_entity(self.count - 1).unwrap())
         } else {
             None
         }
@@ -32,7 +31,7 @@ impl<'registry, T: Component> EntityStream<'registry, T> {
 }
 
 #[derive(Debug)]
-struct EntityError {
+pub struct EntityError {
     index: EntityIndex,
 }
 
