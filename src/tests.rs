@@ -1,5 +1,19 @@
-use ::Registry;
-use ::ExampleComponent;
+use component::{ Component, ComponentMask };
+use registry::Registry;
+
+enum ExampleComponent {
+    Count(i32),
+    Name(String),
+}
+
+impl Component for ExampleComponent {
+    fn get_mask(&self) -> ComponentMask {
+        match self {
+            &ExampleComponent::Count(..) => 1 << 0,
+            &ExampleComponent::Name(..) => 1 << 1,
+        }
+    }
+}
 
 #[test]
 fn add_remove_crash_test() {
