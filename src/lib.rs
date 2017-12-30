@@ -1,3 +1,5 @@
+extern crate smallvec;
+
 use registry::Registry;
 use component::Component;
 

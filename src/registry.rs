@@ -3,6 +3,7 @@ use std::error::Error;
 use component::{Component, ComponentMask};
 
 type EntityIndex = usize;
+pub type Link = usize;
 
 pub struct EntityStream<'registry, T: 'registry + Component> {
     count: EntityIndex,
@@ -47,9 +48,27 @@ impl Error for EntityError {
     }
 }
 
+#[derive(Debug)]
+pub struct LinkError;
+
+impl fmt::Display for LinkError{
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}, either above the maximum of {} links, or to an entity which does not currently exist.", self.description(),  MAX_LINKS)
+    }
+}
+
+impl Error for LinkError {
+    fn description(&self) -> &str {
+        "Attempted to make an invalid new link"
+    }
+}
+
+
+const MAX_LINKS: usize = 200;
 pub struct Registry<T: Component> {
     components: Vec<T>,
     entity_indicies: Vec<usize>,
+    links: [Option<EntityIndex>; MAX_LINKS],
 }
 
 impl<T: Component> Registry<T> {
@@ -62,7 +81,62 @@ impl<T: Component> Registry<T> {
             self.components.push(component);
         } 
     }
+
+    pub fn link_make_entity(&mut self, components: Vec<T>) -> Link {
+        let entity_index = self.entity_indicies.len();
+        self.make_entity(components);
+        self.make_link(entity_index)
+    }
+
+    pub fn make_link(&mut self, index: EntityIndex) -> Link {
+        self.try_make_link(index).unwrap()
+    }
+
+    pub fn try_make_link(&mut self, index: EntityIndex) -> Result<Link, LinkError> {
+        let mut link: Result<Link, LinkError> = Err(LinkError);
+        if index < self.entity_indicies.len() {
+            for i in 0..MAX_LINKS {
+                if self.links[i] == None{
+                    self.links[i] = Some(index);
+                    link = Ok(i);
+                    break
+                }
+            }
+        }
+        link
+    }
     
+    pub fn free_link(&mut self, link: Link) {
+        self.links[link] = None;
+    }
+
+pub fn get_entity_by_link(&mut self, link: Link) -> &mut [T] {
+    self.try_get_entity_by_link(link).unwrap()
+}
+
+    pub fn try_get_entity_by_link(&mut self, link: Link) -> Result<&mut [T], LinkError> {
+        match self.links[link] {
+            Some(entity_index) => { Ok(self.get_entity(entity_index)) },
+            None => { Err(LinkError) },
+        }
+    }
+
+        
+    fn update_links(&mut self, removed_entity_index: EntityIndex) {
+        for i in 0..MAX_LINKS {
+            match self.links[i] {
+                Some(mut index) => {
+                    if index > removed_entity_index {
+                        index -= 1;
+                    } else if index == removed_entity_index {
+                        self.free_link(i);
+                    }
+                },
+                None => (),
+            }
+        }
+    }
+
     fn get_entity_end(&self, entity_index: EntityIndex) -> usize {
         if self.entity_indicies.len() > entity_index + 1 {
             self.entity_indicies[entity_index+1]
@@ -99,6 +173,10 @@ impl<T: Component> Registry<T> {
 
             //Remove the entity index
             self.entity_indicies.remove(entity_index);
+
+            //Update links
+            self.update_links(entity_index);
+
             Ok(())
         }
     }
@@ -142,6 +220,7 @@ impl<T: Component> Registry<T> {
         Registry {
             components: Vec::new(),
             entity_indicies: Vec::new(),
+            links: [None; MAX_LINKS],
         }
     }
 }

@@ -1,5 +1,6 @@
+use ::smallvec::SmallVec;
 use component::{ Component, ComponentMask };
-use registry::Registry;
+use registry::{ Registry, Link };
 use ::System;
 
 struct ExampleRenderSystem;
@@ -30,7 +31,6 @@ impl System<ExampleComponent> for ExampleRenderSystem {
 }
 
 mod print_system {
-    use component::ComponentMask;
     use registry::Registry;
     use ::System;
     use super::ExampleComponent;
@@ -39,14 +39,13 @@ mod print_system {
     pub struct Print;
 
     impl Print {
-        fn print_entity(entity: &[ExampleComponent]) {
+        pub fn print_entity(entity: &[ExampleComponent]) {
             println!("BEGIN ENTITY -------");
             for component in entity {
                 match *component {
                     Name(ref n) => { println!("Name: {}", n) }, 
                     Count(ref c) => { println!("Count: {}", c) },
                     Velocity(ref v) => { println!("Velocity: {}", v) },
-                    _ => (),
                 }
             }
             //println!("END ENTITY");
@@ -103,7 +102,7 @@ mod physics_system {
     }
 }
 
-enum ExampleComponent {
+pub enum ExampleComponent {
     Count(i32),
     Name(String),
     Velocity(i32),
@@ -118,6 +117,42 @@ impl Component for ExampleComponent {
             &Velocity(..) => 1 << 2,
         }
     }
+}
+
+#[test]
+fn links() {
+    use self::ExampleComponent::*;
+    use self::print_system::Print;
+
+    let mut registry: Registry<ExampleComponent> = Registry::new();
+
+    let first_link: Link = registry.link_make_entity(vec![Count(0), Velocity(2), Name(String::from("first"))]);
+    let second_link = registry.link_make_entity(vec![Count(0), Velocity(1), Name(String::from("second"))]);
+    let third_link = registry.link_make_entity(vec![Velocity(20), Name(String::from("third"))]);
+    let fourth_link = registry.link_make_entity(vec![Count(0), Name(String::from("fourth"))]);
+    let fifth_link = registry.link_make_entity(vec![Count(0), Velocity(100)]);
+
+    registry.remove_entity(2);
+    Print::print_entity(registry.get_entity_by_link(fifth_link));
+    registry.remove_entity(0);
+    registry.remove_entity(0);
+    registry.remove_entity(0);
+    registry.remove_entity(0);
+}
+
+#[test] 
+fn small_vec() {
+    let mut v = SmallVec::<[u8; 4]>::new();
+
+    v.extend(0..4);
+    assert_eq!(v.len(), 4);
+    assert!(!v.spilled());
+
+    v.grow(6);
+
+    v.push(4);
+    assert_eq!(v.len(), 5);
+    assert!(v.spilled());
 }
 
 #[test]
