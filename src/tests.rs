@@ -134,6 +134,7 @@ fn links() {
 
     registry.remove_entity(2);
     Print::print_entity(registry.get_entity_by_link(fifth_link));
+    Print::print_entity(registry.get_entity_by_link(fourth_link));
     registry.remove_entity(0);
     registry.remove_entity(0);
     registry.remove_entity(0);

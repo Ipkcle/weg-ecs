@@ -123,17 +123,18 @@ pub fn get_entity_by_link(&mut self, link: Link) -> &mut [T] {
 
         
     fn update_links(&mut self, removed_entity_index: EntityIndex) {
+        let mut to_remove: Option<usize> = None;
         for i in 0..MAX_LINKS {
-            match self.links[i] {
-                Some(mut index) => {
-                    if index > removed_entity_index {
-                        index -= 1;
-                    } else if index == removed_entity_index {
-                        self.free_link(i);
-                    }
-                },
-                None => (),
+            if let Some(ref mut index) = self.links[i] {
+                if *index > removed_entity_index {
+                    *index = *index -1;
+                } else if *index == removed_entity_index {
+                    to_remove = Some(i);
+                }
             }
+        }
+        if let Some(i) = to_remove {
+            self.links[i] = None;
         }
     }
 
