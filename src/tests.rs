@@ -17,40 +17,143 @@ impl ExampleRenderSystem {
             Some(name) => println!("name of this entity is: {}", name),
             None => println!("this entity has no name"),
         }
-
     }
-
 }
 
 impl System<ExampleComponent> for ExampleRenderSystem {
-    fn mask() -> ComponentMask {
-        0 
-    }
-
     fn run(&mut self, registry: &mut Registry<ExampleComponent>) {
-        let mut entity_stream = registry.get_entity_stream();
+        let mut entity_stream = registry.stream();
         For!(entity in entity_stream => {
             ExampleRenderSystem::run_on_entity(entity);
         })
     }
 }
 
+mod print_system {
+    use component::ComponentMask;
+    use registry::Registry;
+    use ::System;
+    use super::ExampleComponent;
+    use super::ExampleComponent::{Count, Name, Velocity};
+
+    pub struct Print;
+
+    impl Print {
+        fn print_entity(entity: &[ExampleComponent]) {
+            println!("BEGIN ENTITY -------");
+            for component in entity {
+                match *component {
+                    Name(ref n) => { println!("Name: {}", n) }, 
+                    Count(ref c) => { println!("Count: {}", c) },
+                    Velocity(ref v) => { println!("Velocity: {}", v) },
+                    _ => (),
+                }
+            }
+            //println!("END ENTITY");
+        }
+    }
+
+    impl System<ExampleComponent> for Print {
+        fn run(&mut self, registry: &mut Registry<ExampleComponent>) {
+            let mut stream = registry.stream();
+            For!(entity in stream => {
+                Print::print_entity(entity);
+            })
+        }
+    }
+}
+
+
+mod physics_system {
+    use component::ComponentMask;
+    use registry::Registry;
+    use ::System;
+    use super::ExampleComponent;
+    use super::ExampleComponent::{Count, Velocity};
+
+    static MASK: ComponentMask = (1<<0 & 1<<2);
+
+    pub struct Physics;
+
+    impl Physics {
+        fn move_entity(entity: &mut [ExampleComponent]) {
+            let mut velocity: &i32 = &0;
+            let mut count: &mut i32 = &mut 0;
+            for component in entity {
+                match *component {
+                   Count(ref mut c) => { count = c },
+                   Velocity(ref v) => { velocity = v },
+                   _ => (),
+                }
+            }
+            *count += *velocity;
+        }
+    }
+
+    impl System<ExampleComponent> for Physics {
+        fn run(&mut self, registry: &mut Registry<ExampleComponent>) {
+            let mut stream = registry.stream();
+            For!(entity in stream => {
+                let entity_mask = Registry::mask_of(entity);
+                if MASK & entity_mask == entity_mask {
+                    Physics::move_entity(entity);
+                }
+            })
+        }
+    }
+}
+
 enum ExampleComponent {
     Count(i32),
     Name(String),
+    Velocity(i32),
 }
 
 impl Component for ExampleComponent {
     fn get_mask(&self) -> ComponentMask {
+        use self::ExampleComponent::*;
         match self {
-            &ExampleComponent::Count(..) => 1 << 0,
-            &ExampleComponent::Name(..) => 1 << 1,
+            &Count(..) => 1 << 0,
+            &Name(..) => 1 << 1,
+            &Velocity(..) => 1 << 2,
         }
     }
 }
 
 #[test]
-fn system_crash_test() {
+fn physics_system() {
+    use self::ExampleComponent::*;
+
+    let mut registry: Registry<ExampleComponent> = Registry::new();
+    registry.make_entity(vec![Count(0), Velocity(2), Name(String::from("first"))]);
+    registry.make_entity(vec![Count(0), Velocity(1), Name(String::from("second"))]);
+    registry.make_entity(vec![Velocity(20), Name(String::from("third"))]);
+    registry.make_entity(vec![Count(0), Name(String::from("fourth"))]);
+    registry.make_entity(vec![Count(0), Velocity(100)]);
+    
+    let mut phys = physics_system::Physics{};
+    let mut print = print_system::Print{};
+    
+    print.run(&mut registry);
+    println!("Running Physics system!");
+    phys.run(&mut registry);
+    //
+    print.run(&mut registry);
+    println!("Running Physics system!");
+    phys.run(&mut registry);
+    //
+    print.run(&mut registry);
+    println!("Running Physics system!");
+    phys.run(&mut registry);
+    //
+    print.run(&mut registry);
+    println!("Running Physics system!");
+    phys.run(&mut registry);
+    print.run(&mut registry);
+}
+
+#[test]
+fn system_crash() {
     let mut registry: Registry<ExampleComponent> = Registry::new();
     registry.make_entity(vec![ExampleComponent::Count(0), ExampleComponent::Name(String::from("first"))]);
     registry.make_entity(vec![ExampleComponent::Count(0), ExampleComponent::Name(String::from("second"))]);
@@ -64,7 +167,7 @@ fn system_crash_test() {
 }
 
 #[test]
-fn add_remove_crash_test() {
+fn add_remove_entities_crash() {
     let mut registry: Registry<ExampleComponent> = Registry::new();
     registry.make_entity(vec![ExampleComponent::Count(0), ExampleComponent::Name(String::from("first"))]);
     registry.make_entity(vec![ExampleComponent::Count(0), ExampleComponent::Name(String::from("second"))]);

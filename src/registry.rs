@@ -1,6 +1,6 @@
 use std::fmt;
 use std::error::Error;
-use component::Component;
+use component::{Component, ComponentMask};
 
 type EntityIndex = usize;
 
@@ -83,7 +83,6 @@ impl<T: Component> Registry<T> {
         } else {
             //Find first and last index of entity in the component array
             let entity_end = self.get_entity_end(entity_index);
-            println!("entity {} ends here:{}", entity_index, entity_end);
             let entity_begin = self.entity_indicies[entity_index];
 
             //Remove each component of the entity
@@ -126,8 +125,16 @@ impl<T: Component> Registry<T> {
     pub fn get_num_components(&self) -> usize {
         self.components.len()
     }
+    
+    pub fn mask_of(entity: &[T]) -> ComponentMask {
+        let mut mask: ComponentMask = 0;
+        for component in entity {
+            mask &= component.get_mask();
+        }
+        mask
+    }
 
-    pub fn get_entity_stream<'registry>(&'registry mut self) -> EntityStream<'registry, T> {
+    pub fn stream<'registry>(&'registry mut self) -> EntityStream<'registry, T> {
         EntityStream::new(self)
     }
 

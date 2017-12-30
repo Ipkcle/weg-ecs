@@ -13,6 +13,5 @@ mod registry;
 
 trait System<T: Component> {
     fn run(&mut self, registry: &mut Registry<T>);
-    fn mask() -> component::ComponentMask;
 }
 
