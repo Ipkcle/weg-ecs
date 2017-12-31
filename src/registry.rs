@@ -1,6 +1,7 @@
 use std::fmt;
 use std::error::Error;
 use component::{Component, ComponentMask};
+use ::smallvec::SmallVec;
 
 type EntityIndex = usize;
 pub type Link = usize;
@@ -64,10 +65,12 @@ impl Error for LinkError {
 }
 
 
-const MAX_LINKS: usize = 200;
+const MAX_LINKS: usize = 512;
+const MAX_ENTITIES: usize = 1024;
+const MAX_COMPONENTS: usize = 8192;
 pub struct Registry<T: Component> {
-    components: Vec<T>,
-    entity_indicies: Vec<usize>,
+    components: SmallVec<[T; MAX_COMPONENTS]>,
+    entity_indicies: SmallVec<[usize; MAX_ENTITIES]>,
     links: [Option<EntityIndex>; MAX_LINKS],
 }
 
@@ -140,7 +143,7 @@ pub fn get_entity_by_link(&mut self, link: Link) -> &mut [T] {
 
     fn get_entity_end(&self, entity_index: EntityIndex) -> usize {
         if self.entity_indicies.len() > entity_index + 1 {
-            self.entity_indicies[entity_index+1]
+            *self.entity_indicies.get(entity_index + 1).unwrap()
         } else {
             self.components.len()
         }
@@ -156,18 +159,21 @@ pub fn get_entity_by_link(&mut self, link: Link) -> &mut [T] {
         if self.entity_indicies.len() <= entity_index {
             Err(EntityError{ index: entity_index })
         } else {
+
             //Find first and last index of entity in the component array
-            let entity_end = self.get_entity_end(entity_index);
-            let entity_begin = self.entity_indicies[entity_index];
+            let entity_end: usize = self.get_entity_end(entity_index);
+            let entity_begin: usize = *self.entity_indicies.get(entity_index).unwrap();
 
             //Remove each component of the entity
-            self.components.drain(entity_begin..entity_end);
+            for _ in entity_begin..entity_end {
+                self.components.remove(entity_begin);
+            }
 
             //If the removed entity is not the most recent entity, 
             //update the entity beginnings of all more recent entities.
             if self.entity_indicies.len() > entity_index + 1 {
                 let num_components_removed = entity_end - entity_begin;
-                for entity_begin_index in &mut self.entity_indicies[entity_index + 1..] {
+                for entity_begin_index in self.entity_indicies.get_mut(entity_index + 1..).unwrap() {
                     *entity_begin_index -= num_components_removed;
                 }
             }
@@ -192,8 +198,8 @@ pub fn get_entity_by_link(&mut self, link: Link) -> &mut [T] {
             Err(EntityError{ index: entity_index })
         } else { 
             let entity_end = self.get_entity_end(entity_index);
-            let entity_begin = self.entity_indicies[entity_index];
-            Ok(&mut self.components[entity_begin..entity_end])
+            let entity_begin = *self.entity_indicies.get(entity_index).unwrap();
+            Ok(self.components.get_mut(entity_begin..entity_end).unwrap())
         }
     }
 
@@ -219,8 +225,8 @@ pub fn get_entity_by_link(&mut self, link: Link) -> &mut [T] {
 
     pub fn new() -> Registry<T> {
         Registry {
-            components: Vec::new(),
-            entity_indicies: Vec::new(),
+            components: SmallVec::<[T; MAX_COMPONENTS]>::new(),
+            entity_indicies: SmallVec::<[usize; MAX_ENTITIES]>::new(),
             links: [None; MAX_LINKS],
         }
     }

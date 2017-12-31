@@ -133,7 +133,9 @@ fn links() {
     let fifth_link = registry.link_make_entity(vec![Count(0), Velocity(100)]);
 
     registry.remove_entity(2);
+    println!("fifth");
     Print::print_entity(registry.get_entity_by_link(fifth_link));
+    println!("fourth");
     Print::print_entity(registry.get_entity_by_link(fourth_link));
     registry.remove_entity(0);
     registry.remove_entity(0);
@@ -209,9 +211,13 @@ fn add_remove_entities_crash() {
     registry.make_entity(vec![ExampleComponent::Count(0), ExampleComponent::Name(String::from("second"))]);
     registry.make_entity(vec![ExampleComponent::Name(String::from("third"))]);
     registry.make_entity(vec![ExampleComponent::Count(0), ExampleComponent::Name(String::from("fourth"))]);
+    println!("the registry has {} components", registry.get_num_components());
     registry.remove_entity(0);
+    println!("the registry has {} components", registry.get_num_components());
     registry.remove_entity(0);
+    println!("the registry has {} components", registry.get_num_components());
     registry.remove_entity(0);
+    println!("the registry has {} components", registry.get_num_components());
     registry.remove_entity(0);
 }
 
