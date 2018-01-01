@@ -1,4 +1,3 @@
-use ::smallvec::SmallVec;
 use component::{ Component, ComponentMask };
 use registry::{ Registry, Link };
 use ::System;
@@ -139,21 +138,6 @@ fn links() {
     registry.remove_entity(0);
     registry.remove_entity(0);
     registry.remove_entity(0);
-}
-
-#[test] 
-fn small_vec() {
-    let mut v = SmallVec::<[u8; 4]>::new();
-
-    v.extend(0..4);
-    assert_eq!(v.len(), 4);
-    assert!(!v.spilled());
-
-    v.grow(6);
-
-    v.push(4);
-    assert_eq!(v.len(), 5);
-    assert!(v.spilled());
 }
 
 #[test]
