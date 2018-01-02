@@ -2,16 +2,16 @@ use registry::Registry;
 use component::Component;
 
 #[macro_use]
-mod macros;
+pub mod macros;
 
 #[cfg(test)]
 mod tests;
 
-mod component;
+pub mod component;
 
-mod registry;
+pub mod registry;
 
-trait System<T: Component> {
+pub trait System<T: Component> {
     fn run(&mut self, registry: &mut Registry<T>);
 }
 
