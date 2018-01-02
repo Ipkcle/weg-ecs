@@ -217,7 +217,7 @@ impl<T: Component> Registry<T> {
         EntityStream::new(self)
     }
 
-    pub fn with_capacity(component_capacity: usize, entity_capacity: usize) {
+    pub fn with_capacity(component_capacity: usize, entity_capacity: usize) -> Registry<T> {
         Registry {
             components: Vec::with_capacity(component_capacity),
             entity_indicies: Vec::with_capacity(entity_capacity),
