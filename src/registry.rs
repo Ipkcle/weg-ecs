@@ -1,15 +1,14 @@
 use std::fmt;
 use std::error::Error;
-use component::{Component, ComponentMask};
 
-pub struct EntityStream<'registry, T: 'registry + Component> {
+pub struct EntityStream<'registry, T: 'registry> {
     count: EntityIndex,
     num_entities: EntityIndex,
     registry: &'registry mut Registry<T>,
 }
 
 ///Streaming iterator for entities in registry
-impl<'registry, T: Component> EntityStream<'registry, T> {
+impl<'registry, T> EntityStream<'registry, T> {
     pub fn new(registry: &mut Registry<T>) -> EntityStream<T> {
         EntityStream {
             count: 0,
@@ -66,13 +65,13 @@ type EntityIndex = usize;
 pub type Link = usize;
 
 const MAX_LINKS: usize = 200;
-pub struct Registry<T: Component> {
+pub struct Registry<T> {
     components: Vec<T>,
     entity_indicies: Vec<ComponentIndex>,
     links: [Option<EntityIndex>; MAX_LINKS],
 }
 
-impl<T: Component> Registry<T> {
+impl<T> Registry<T> {
     pub fn make_entity(&mut self, components_to_add: Vec<T>) {
         //Add the new entity index
         self.entity_indicies.push(self.components.len());
@@ -205,14 +204,6 @@ impl<T: Component> Registry<T> {
         self.components.len()
     }
     
-    pub fn mask_of(entity: &[T]) -> ComponentMask {
-        let mut mask: ComponentMask = 0;
-        for component in entity {
-            mask &= component.get_mask();
-        }
-        mask
-    }
-
     pub fn stream<'registry>(&'registry mut self) -> EntityStream<'registry, T> {
         EntityStream::new(self)
     }

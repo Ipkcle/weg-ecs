@@ -1,6 +1,12 @@
-use component::{ Component, ComponentMask };
 use registry::{ Registry, Link };
-use ::System;
+
+fn mask_of(entity: &[ExampleComponent]) -> u32 {
+    let mut mask: u32 = 0;
+    for component in entity {
+        mask &= component.get_mask();
+    }
+    mask
+}
 
 struct ExampleRenderSystem;
 
@@ -18,10 +24,8 @@ impl ExampleRenderSystem {
             None => println!("this entity has no name"),
         }
     }
-}
 
-impl System<ExampleComponent> for ExampleRenderSystem {
-    fn run(&mut self, registry: &mut Registry<ExampleComponent>) {
+    pub fn run(&mut self, registry: &mut Registry<ExampleComponent>) {
         let mut entity_stream = registry.stream();
         For!(entity in entity_stream => {
             ExampleRenderSystem::run_on_entity(entity);
@@ -31,7 +35,6 @@ impl System<ExampleComponent> for ExampleRenderSystem {
 
 mod print_system {
     use registry::Registry;
-    use ::System;
     use super::ExampleComponent;
     use super::ExampleComponent::{Count, Name, Velocity};
 
@@ -49,10 +52,8 @@ mod print_system {
             }
             //println!("END ENTITY");
         }
-    }
 
-    impl System<ExampleComponent> for Print {
-        fn run(&mut self, registry: &mut Registry<ExampleComponent>) {
+        pub fn run(&mut self, registry: &mut Registry<ExampleComponent>) {
             let mut stream = registry.stream();
             For!(entity in stream => {
                 Print::print_entity(entity);
@@ -63,13 +64,12 @@ mod print_system {
 
 
 mod physics_system {
-    use component::ComponentMask;
     use registry::Registry;
-    use ::System;
     use super::ExampleComponent;
     use super::ExampleComponent::{Count, Velocity};
+    use super::mask_of;
 
-    static MASK: ComponentMask = (1<<0 & 1<<2);
+    static MASK: u32 = (1<<0 & 1<<2);
 
     pub struct Physics;
 
@@ -86,13 +86,11 @@ mod physics_system {
             }
             *count += *velocity;
         }
-    }
 
-    impl System<ExampleComponent> for Physics {
-        fn run(&mut self, registry: &mut Registry<ExampleComponent>) {
+        pub fn run(&mut self, registry: &mut Registry<ExampleComponent>) {
             let mut stream = registry.stream();
             For!(entity in stream => {
-                let entity_mask = Registry::mask_of(entity);
+                let entity_mask = mask_of(entity);
                 if MASK & entity_mask == entity_mask {
                     Physics::move_entity(entity);
                 }
@@ -107,8 +105,8 @@ pub enum ExampleComponent {
     Velocity(i32),
 }
 
-impl Component for ExampleComponent {
-    fn get_mask(&self) -> ComponentMask {
+impl ExampleComponent {
+    fn get_mask(&self) -> u32 {
         use self::ExampleComponent::*;
         match self {
             &Count(..) => 1 << 0,
