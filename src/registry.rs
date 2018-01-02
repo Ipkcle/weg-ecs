@@ -2,9 +2,6 @@ use std::fmt;
 use std::error::Error;
 use component::{Component, ComponentMask};
 
-type EntityIndex = usize;
-pub type Link = usize;
-
 pub struct EntityStream<'registry, T: 'registry + Component> {
     count: EntityIndex,
     num_entities: EntityIndex,
@@ -64,10 +61,14 @@ impl Error for LinkError {
 }
 
 
+type ComponentIndex = usize;
+type EntityIndex = usize;
+pub type Link = usize;
+
 const MAX_LINKS: usize = 200;
 pub struct Registry<T: Component> {
     components: Vec<T>,
-    entity_indicies: Vec<usize>,
+    entity_indicies: Vec<ComponentIndex>,
     links: [Option<EntityIndex>; MAX_LINKS],
 }
 
@@ -110,9 +111,9 @@ impl<T: Component> Registry<T> {
         self.links[link] = None;
     }
 
-pub fn get_entity_by_link(&mut self, link: Link) -> &mut [T] {
-    self.try_get_entity_by_link(link).unwrap()
-}
+    pub fn get_entity_by_link(&mut self, link: Link) -> &mut [T] {
+        self.try_get_entity_by_link(link).unwrap()
+    }
 
     pub fn try_get_entity_by_link(&mut self, link: Link) -> Result<&mut [T], LinkError> {
         match self.links[link] {
@@ -126,8 +127,7 @@ pub fn get_entity_by_link(&mut self, link: Link) -> &mut [T] {
         let mut to_remove: Option<usize> = None;
         for i in 0..MAX_LINKS {
             if let Some(ref mut index) = self.links[i] {
-                if *index > removed_entity_index {
-                    *index = *index -1;
+                if *index > removed_entity_index { *index = *index -1;
                 } else if *index == removed_entity_index {
                     to_remove = Some(i);
                 }
@@ -215,6 +215,14 @@ pub fn get_entity_by_link(&mut self, link: Link) -> &mut [T] {
 
     pub fn stream<'registry>(&'registry mut self) -> EntityStream<'registry, T> {
         EntityStream::new(self)
+    }
+
+    pub fn with_capacity(component_capacity: usize, entity_capacity: usize) {
+        Registry {
+            components: Vec::with_capacity(component_capacity),
+            entity_indicies: Vec::with_capacity(entity_capacity),
+            links: [None; MAX_LINKS],
+        }
     }
 
     pub fn new() -> Registry<T> {
